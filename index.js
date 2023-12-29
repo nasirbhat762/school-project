@@ -6,6 +6,7 @@ const Teacher = require("./model/teacher");
 const Student = require("./model/student");
 const path = require("path");
 const methodOverride = require("method-override");
+const ExpressError = require("./ErrorClass/ExpressError");
 
 app.use(methodOverride("_method"));
 app.set("view engine", "ejs");
@@ -28,6 +29,8 @@ app.listen(port, () => {
 
 // Root Route
 app.get("/", (req, res) => {
+  // yahan pe express implicitly(khudse) next ko call lagata hai
+  // throw new ExpressError(404, "page not found");
   res.send("this is root");
 });
 
@@ -121,10 +124,15 @@ app.get("/students", async (req, res) => {
   res.render("./student/students.ejs", { students });
 });
 // Student show route
-app.get("/students/:id/show", async (req, res) => {
+app.get("/students/:id/show", async (req, res, next) => {
   const { id } = req.params;
   const student = await Student.findById(id);
-  res.render("./student/showstudent.ejs", { student });
+  if (!student) {
+    // yahan pe express implicitly(khudse) next ko call nahi lagata so explicitly lagana padega
+    next(new ExpressError(404, "user not found"));
+  } else {
+    res.render("./student/showstudent.ejs", { student });
+  }
 });
 // New Route
 app.get("/students/new", (req, res) => {
@@ -210,4 +218,11 @@ app.get("/marks/student", async (req, res) => {
 app.get("/marks", async (req, res) => {
   let students = await Student.find();
   res.render("./mark/marks.ejs", { students });
+});
+
+// custom error handling middleware
+
+app.use((err, req, res, next) => {
+  const { status = 500, message = "some error occured" } = err;
+  res.status(status).send(message);
 });
